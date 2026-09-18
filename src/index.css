@@ -1,0 +1,87 @@
+@import "tailwindcss";
+
+/* Custom thin line scrollbars */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.4);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(13, 148, 136, 0.7);
+}
+
+/* Firefox scrollbar styling */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.4) transparent;
+}
+
+/* Utility to completely hide scrollbars where needed */
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+}
+.no-scrollbar {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
+@layer base {
+  .dark {
+    color-scheme: dark;
+  }
+
+  .dark body {
+    background-color: #0b1329;
+    color: #f1f5f9;
+  }
+
+  .dark .bg-white {
+    background-color: #111c38 !important;
+    color: #f1f5f9 !important;
+  }
+
+  .dark .bg-slate-50,
+  .dark .bg-slate-50\/50,
+  .dark .bg-slate-50\/90 {
+    background-color: #0e172e !important;
+  }
+
+  .dark .bg-slate-100 {
+    background-color: #172445 !important;
+  }
+
+  .dark .border-slate-200,
+  .dark .border-slate-200\/80,
+  .dark .border-slate-100 {
+    border-color: #1e2d54 !important;
+  }
+
+  .dark .text-slate-900,
+  .dark .text-slate-800 {
+    color: #f8fafc !important;
+  }
+
+  .dark .text-slate-700,
+  .dark .text-slate-600 {
+    color: #cbd5e1 !important;
+  }
+
+  .dark .text-slate-500,
+  .dark .text-slate-400 {
+    color: #94a3b8 !important;
+  }
+
+  .dark input,
+  .dark select,
+  .dark textarea {
+    background-color: #172445 !important;
+    color: #f8fafc !important;
+    border-color: #2a3a66 !important;
+  }
+}

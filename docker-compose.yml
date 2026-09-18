@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  prms-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: stjude-prms-app
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - MONGODB_URI=mongodb://mongo:27017/prms-db
+      - JWT_SECRET=production_super_secret_jwt_key_st_jude_2026
+      - JWT_EXPIRES_IN=15m
+      - JWT_REFRESH_SECRET=production_super_secret_jwt_refresh_key_st_jude_2026
+      - JWT_REFRESH_EXPIRES_IN=7d
+      - CORS_ORIGIN=*
+      - RATE_LIMIT_WINDOW_MS=900000
+      - RATE_LIMIT_MAX=500
+      - ENABLE_DEMO_MODE=false
+    depends_on:
+      - mongo
+    networks:
+      - prms-network
+
+  mongo:
+    image: mongo:7.0
+    container_name: stjude-prms-db
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - prms-network
+
+volumes:
+  mongo-data:
+
+networks:
+  prms-network:
+    driver: bridge

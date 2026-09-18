@@ -1,0 +1,6 @@
+{
+  "name": "Meridian Health - Hospital Dashboard",
+  "description": "Clinical and operational hospital management system for St. Meridian General with patient analytics, bed occupancy, appointments tracking, and staff management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
