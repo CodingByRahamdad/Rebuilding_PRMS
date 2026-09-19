@@ -1,4 +1,6 @@
-const API_BASE_URL = '/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
+  ? `${import.meta.env.VITE_API_BASE_URL}/api/v1`
+  : '/api/v1';
 
 export class ApiClient {
   private static token: string | null = localStorage.getItem('prms_auth_token');

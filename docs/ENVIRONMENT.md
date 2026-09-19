@@ -1,6 +1,14 @@
 # ENVIRONMENT.md
 
-Documents every environment variable actually read by the application, confirmed from `src/shared/config/env.config.ts`, `src/shared/middleware/rate-limiter.middleware.ts`, `src/shared/database/connection.ts`/`db-guard.ts`, `vite.config.ts`, and `docker-compose.yml`. **No real secret values are reproduced here** — actual values live only in the repository's own `.env` file and must stay there; treat any secret-shaped value as `<REDACTED>`.
+Documents every environment variable actually read by the application, confirmed from `backend/src/shared/config/env.config.ts`, `backend/src/shared/middleware/rate-limiter.middleware.ts`, `backend/src/shared/database/connection.ts`/`db-guard.ts`, `frontend/vite.config.ts`, and `docker-compose.yml`. **No real secret values are reproduced here** — actual values live only in `backend/.env` (relocated from the repository root during Phase 2 — see below) and must stay there; treat any secret-shaped value as `<REDACTED>`.
+
+## Phase 2 changes to environment handling
+
+- The single root `.env` was **relocated to `backend/.env`** (file move, values untouched) — every variable it held was backend-only; no `VITE_`-prefixed variables existed in it. Root no longer has a `.env` file.
+- Two new example files exist: `backend/.env.example` and `frontend/.env.example`, replacing any prior single example file. `.gitignore`'s existing `.env*` / `!.env.example` rule already covers both locations — no `.gitignore` change was needed.
+- `APP_URL` and `GEMINI_API_KEY` were **dropped from `backend/.env.example`** — both were confirmed unused by any code (see below); this is a documentation/example cleanup, not a functional change, since the real `backend/.env` file itself is untouched and may still contain them harmlessly.
+- Three new frontend-only variables were introduced, all optional with dev-safe defaults: `VITE_API_BASE_URL`, `VITE_SOCKET_URL` (production-only overrides; unset in dev, where the Vite proxy handles same-origin routing), and `VITE_DEV_PROXY_TARGET` (overrides the dev-server proxy's backend target, default `http://localhost:3000`).
+- `backend/.env.example`'s `CORS_ORIGIN` now defaults to `http://localhost:5173` (the frontend's Vite dev port) instead of `*`, reflecting that frontend and backend are now separate origins. The real `backend/.env` file's existing `CORS_ORIGIN=*` value was left untouched (it already resolves to `origin: true`, which works correctly with credentialed cross-origin requests) — only the example file's guidance changed.
 
 ## Backend-only secrets (must never reach the frontend bundle)
 
@@ -22,36 +30,48 @@ Documents every environment variable actually read by the application, confirmed
 
 | Variable | Purpose | Where read | Notes |
 |---|---|---|---|
-| `VITE_ENABLE_DEMO_MODE` / `import.meta.env.VITE_ENABLE_DEMO_MODE` | Build-time demo-mode flag consumed by the frontend | `vite.config.ts` (defines it), `src/utils/demoMode.ts` (reads it as a fallback) | The frontend's authoritative source for demo mode at runtime is actually the backend's `/api/v1/config` response, not this build-time flag — see `DEMO_MODE.md`. |
-| `APP_URL` | Documented in `.env` as "public URL this app is hosted at ... for self-referential links if/when you add them" | `REQUIRES VERIFICATION` — no code reference to `process.env.APP_URL` or `import.meta.env.APP_URL` was confirmed during this audit; treat as currently unused until verified. | |
-| `DISABLE_HMR` | Disables Vite HMR/watch (AI-Studio-hosting-specific convenience) | `vite.config.ts` | Not a normal app-level concern. |
+| `VITE_ENABLE_DEMO_MODE` / `import.meta.env.VITE_ENABLE_DEMO_MODE` | Build-time demo-mode flag consumed by the frontend | `frontend/vite.config.ts` (defines it), `frontend/src/utils/demoMode.ts` (reads it as a fallback) | The frontend's authoritative source for demo mode at runtime is actually the backend's `/api/v1/config` response, not this build-time flag — see `DEMO_MODE.md`. |
+| `VITE_API_BASE_URL` | **New in Phase 2.** Optional absolute backend URL prefix for `apiClient.ts` | `frontend/src/services/apiClient.ts` | Unset in dev (Vite proxy handles routing); only needed in production when frontend/backend are on genuinely different hosts with no proxy. |
+| `VITE_SOCKET_URL` | **New in Phase 2.** Optional absolute backend URL for the Socket.IO client | `frontend/src/services/socketClient.ts` | Same as above — unset in dev, production-only override. |
+| `VITE_DEV_PROXY_TARGET` | **New in Phase 2.** Dev-server-only proxy target for `/api` and `/socket.io` | `frontend/vite.config.ts` (config-eval time only — never bundled into the browser) | Defaults to `http://localhost:3000` if unset. |
+| `DISABLE_HMR` | Disables Vite HMR/watch (AI-Studio-hosting-specific convenience) | `frontend/vite.config.ts` | Not a normal app-level concern. |
+
+`APP_URL` was dropped from `backend/.env.example` in Phase 2 — no code reference to
+`process.env.APP_URL` or `import.meta.env.APP_URL` was found; treat as unused.
 
 ## Explicitly NOT frontend-safe (do not ever expose to client bundle)
 
-`MONGODB_URI`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, and by extension any value derived from them. None of these are currently referenced anywhere under `src/components`, `src/services`, `src/utils`, `src/App.tsx`, or `src/main.tsx` — confirmed backend-only usage.
+`MONGODB_URI`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, and by extension any value derived from them. None of these are referenced anywhere under `frontend/src/components`, `frontend/src/services`, `frontend/src/utils`, `frontend/src/App.tsx`, or `frontend/src/main.tsx` — confirmed backend-only usage. Verified in Phase 2: a production `frontend` build (`npm run build`) was grepped for `MONGODB_URI`/`JWT_SECRET`/`JWT_REFRESH_SECRET` and the real Atlas credential substring — zero matches.
 
 ## `GEMINI_API_KEY`
 
-Present in `.env` with an explicit comment: "only needed if you actually wire up Gemini API calls somewhere in the app. Not currently used by any code in this project." Confirmed via search: no code references it. Document as unused; do not assume any AI/Gemini integration exists in the current application.
+Was present in the old root `.env` with an explicit comment: "only needed if you actually wire up Gemini API calls somewhere in the app. Not currently used by any code in this project." Confirmed via search: no code references it, and the `@google/genai` package was removed from both new `package.json` files during Phase 2 (see `DECISIONS.md`). Document as unused; do not assume any AI/Gemini integration exists in the current application. Dropped from `backend/.env.example`.
 
 ## `CORS_ORIGIN`
 
 | Aspect | Value |
 |---|---|
-| Read by | `env.config.ts`, consumed in `src/express-app.ts` (`cors({ origin: env.CORS_ORIGIN === '*' ? true : env.CORS_ORIGIN.split(','), credentials: true, ... })`) |
-| Default | `'*'` |
-| Current `.env` value | `'*'` |
-| `CURRENT ISSUE — DO NOT FIX IN THIS PHASE` | Combining a wildcard origin with `credentials:true` is a permissive configuration that the `.env`'s own comment says should only be used for local development — the repo's `docker-compose.yml` also sets `CORS_ORIGIN=*` in what it labels a "production" configuration (`NODE_ENV=production`), contradicting that guidance. Documented, not changed. |
+| Read by | `env.config.ts`, consumed in `backend/src/express-app.ts` (`cors({ origin: env.CORS_ORIGIN === '*' ? true : env.CORS_ORIGIN.split(','), credentials: true, ... })`) and, **new in Phase 2**, `backend/src/shared/socket.ts` (same expression) |
+| Schema default | `'*'` |
+| Current `backend/.env` value | `'*'` (untouched by Phase 2 — resolves to `origin: true`, which reflects any request origin and works correctly with `credentials: true`) |
+| `backend/.env.example` value | `http://localhost:5173` (documents the recommended explicit value for a real separated-origin setup) |
+| `CURRENT ISSUE — DO NOT FIX IN THIS PHASE` | Combining a wildcard origin with `credentials:true` is a permissive configuration that should only be used for local development — the repo's `docker-compose.yml` also sets `CORS_ORIGIN=*` in what it labels a "production" configuration (`NODE_ENV=production`), contradicting that guidance. Documented, not changed. |
 
-Socket.IO (`src/shared/socket.ts`) has its own, separate, hardcoded `cors: { origin: '*' }` configuration — it is not driven by the `CORS_ORIGIN` env var at all. `CURRENT ISSUE — DO NOT FIX IN THIS PHASE.`
+Socket.IO (`backend/src/shared/socket.ts`) **as of Phase 2** reads the same `CORS_ORIGIN` env var
+as the Express HTTP API (previously it had its own separate, hardcoded `cors: { origin: '*' }`
+configuration, entirely independent of the env var). This was the one CORS-related code change
+made in Phase 2 — it was necessary for cross-origin Socket.IO connections to work once frontend
+and backend became separate processes, and does not touch the pre-existing Socket.IO auth
+middleware issue noted in `ARCHITECTURE.md` §7 (`CURRENT ISSUE — DO NOT FIX IN THIS PHASE`).
 
 ## `docker-compose.yml` environment handling
 
-All backend env vars for the `prms-app` service (`NODE_ENV`, `PORT`, `MONGODB_URI`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `JWT_REFRESH_SECRET`, `JWT_REFRESH_EXPIRES_IN`, `CORS_ORIGIN`, `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX`, `ENABLE_DEMO_MODE`) are hardcoded directly in the compose file rather than injected via a `.env` file or secrets manager. `CURRENT ISSUE — DO NOT FIX IN THIS PHASE` — real-looking secret values are committed in plaintext in this file, and the `mongo:7.0` service in the same file has no authentication configured (`MONGO_INITDB_ROOT_USERNAME`/`PASSWORD` absent). Also note: `docker-compose.yml` references `build: { dockerfile: Dockerfile }`, but **no `Dockerfile` exists anywhere in this repository** — `docker-compose build` would currently fail as configured. `REQUIRES VERIFICATION` whether a Dockerfile was intended to exist and was simply not committed.
+**Unchanged in Phase 2** — deferred to a future phase along with the rest of the Docker rework (see `ARCHITECTURE.md` §8 and `MIGRATION_PROGRESS.md`). All backend env vars for the `prms-app` service (`NODE_ENV`, `PORT`, `MONGODB_URI`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `JWT_REFRESH_SECRET`, `JWT_REFRESH_EXPIRES_IN`, `CORS_ORIGIN`, `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX`, `ENABLE_DEMO_MODE`) are hardcoded directly in the compose file rather than injected via a `.env` file or secrets manager. `CURRENT ISSUE — DO NOT FIX IN THIS PHASE` — real-looking secret values are committed in plaintext in this file, and the `mongo:7.0` service in the same file has no authentication configured (`MONGO_INITDB_ROOT_USERNAME`/`PASSWORD` absent). Also note: `docker-compose.yml` references `build: { dockerfile: Dockerfile }`, but **no `Dockerfile` exists anywhere in this repository** — `docker-compose build` would currently fail as configured. `REQUIRES VERIFICATION` whether a Dockerfile was intended to exist and was simply not committed.
 
-## Summary: variables that exist in `.env` vs. variables actually consumed by code
+## Summary: variables that exist in `backend/.env` vs. variables actually consumed by code
 
 | In `.env`? | Consumed by code? | Variable |
 |---|---|---|
 | Yes | Yes | `PORT`, `NODE_ENV`, `MONGODB_URI`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `JWT_REFRESH_SECRET`, `JWT_REFRESH_EXPIRES_IN`, `CORS_ORIGIN`, `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX`, `ENABLE_DEMO_MODE` |
-| Yes | **No** | `AUTH_RATE_LIMIT_MAX`, `GEMINI_API_KEY`, `APP_URL` (last one `REQUIRES VERIFICATION`) |
+| Yes (real `.env`, dropped from `.env.example`) | **No** | `AUTH_RATE_LIMIT_MAX` (documented but unimplemented — see above), `GEMINI_API_KEY`, `APP_URL` |
+| No (new in `frontend/.env.example`) | Yes | `VITE_API_BASE_URL`, `VITE_SOCKET_URL`, `VITE_DEV_PROXY_TARGET` |

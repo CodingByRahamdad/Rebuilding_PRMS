@@ -1,13 +1,14 @@
 import { Server as HttpServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import { AuthUtils } from '../modules/auth/auth.utils';
+import { env } from './config/env.config';
 
 let io: SocketIOServer | null = null;
 
 export const initSocket = (httpServer: HttpServer): SocketIOServer => {
   io = new SocketIOServer(httpServer, {
     cors: {
-      origin: '*',
+      origin: env.CORS_ORIGIN === '*' ? true : env.CORS_ORIGIN.split(','),
       methods: ['GET', 'POST', 'PUT', 'DELETE'],
     },
     path: '/socket.io',
