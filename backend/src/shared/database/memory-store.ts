@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import { initialPatients, initialDoctors } from '../../data/mockData';
+import { initialPatients, initialDoctors } from '../data/mockData';
 
 export interface InMemoryUser {
   _id: string;

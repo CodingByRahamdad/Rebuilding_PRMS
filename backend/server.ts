@@ -1,7 +1,4 @@
-import express from 'express';
 import http from 'http';
-import path from 'path';
-import { createServer as createViteServer } from 'vite';
 import { createApp } from './src/express-app';
 import { dbConnection } from './src/shared/database/connection';
 import { seedDatabase } from './src/shared/database/seeder';
@@ -27,31 +24,13 @@ async function startServer() {
     console.warn('⚠️ Non-fatal database initialization note:', err?.message || err);
   }
 
-  // 2. Attach Vite middleware for development or static serving for production
-  if (process.env.NODE_ENV !== 'production') {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
-    });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (req, res, next) => {
-      if (req.path.startsWith('/api')) {
-        return next();
-      }
-      res.sendFile(path.join(distPath, 'index.html'));
-    });
-  }
-
-  // 3. Fallback handlers for unmatched API routes and error handler
+  // 2. Fallback handlers for unmatched API routes and error handler
   app.use(notFoundHandler);
   app.use(errorHandler);
 
   const PORT = env.PORT || 3000;
   server.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 PRMS Backend & Frontend Server listening on http://0.0.0.0:${PORT}`);
+    console.log(`🚀 PRMS Backend API listening on http://0.0.0.0:${PORT}`);
   });
 
   // 4. Graceful Shutdown & Signal Handling
